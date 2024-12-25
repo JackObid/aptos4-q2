@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Layout, Typography, Menu, Space, Button, Dropdown, message } from "antd";
 import { DownOutlined, LogoutOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -11,19 +12,25 @@ interface NavBarProps {
 }
 
 const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
-  const [connected, setConnected] = useState(false);
-  const [balance] = useState<number | null>(100); // Mock balance data
-  const [account] = useState({ address: "0xa1b2c3d4e5f67890123456789abcdef01234567890123456789abcdef01234567" }); // Mock account data
-  const network = { name: "Testnet" }; // Mock network data
+  const location = useLocation();
+  const { connect, disconnect, connected, account, network } = useWallet(); // Using Aptos wallet adapter
+  const [balance, setBalance] = useState<number | null>(null); // Balance state to fetch dynamically
 
-  const handleLogin = () => {
-    setConnected(true);
-    message.success("Connected to wallet");
+  const handleConnect = async () => {
+    try {
+      await connect();
+      message.success("Connected to wallet");
+      // Fetch user balance (mocked here but should fetch from blockchain)
+      setBalance(100); // Replace with a real fetch call
+    } catch (error) {
+      message.error("Failed to connect to wallet");
+    }
   };
 
-  const handleLogout = () => {
-    setConnected(false);
+  const handleDisconnect = () => {
+    disconnect();
     message.success("Disconnected from wallet");
+    setBalance(null); // Clear balance on disconnect
   };
 
   return (
@@ -37,12 +44,21 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
       }}
     >
       <div style={{ display: "flex", alignItems: "center" }}>
-        <img src="/Aptos_Primary_WHT.png" alt="Aptos Logo" style={{ height: "30px", marginRight: 16 }} />
-        <Menu theme="dark" mode="horizontal" defaultSelectedKeys={["marketplace"]} style={{ backgroundColor: "#001529" }}>
-          <Menu.Item key="marketplace">
-            <Link to="/" style={{ color: "#fff" }}>Marketplace</Link>
+        <img
+          src="/Aptos_Primary_WHT.png"
+          alt="Aptos Logo"
+          style={{ height: "30px", marginRight: 16 }}
+        />
+        <Menu
+          theme="dark"
+          mode="horizontal"
+          selectedKeys={[location.pathname]}
+          style={{ backgroundColor: "#001529" }}
+        >
+          <Menu.Item key="/marketplace">
+            <Link to="/marketplace" style={{ color: "#fff" }}>Marketplace</Link>
           </Menu.Item>
-          <Menu.Item key="my-collection">
+          <Menu.Item key="/my-nfts">
             <Link to="/my-nfts" style={{ color: "#fff" }}>My Collection</Link>
           </Menu.Item>
           <Menu.Item key="mint-nft" onClick={onMintNFTClick}>
@@ -58,28 +74,32 @@ const NavBar: React.FC<NavBarProps> = ({ onMintNFTClick }) => {
               <Menu>
                 <Menu.Item key="address">
                   <Text strong>Address:</Text> <br />
-                  <Text copyable>{account.address}</Text>
+                  <Text copyable>{account?.address}</Text>
                 </Menu.Item>
                 <Menu.Item key="network">
-                  <Text strong>Network:</Text> {network.name}
+                  <Text strong>Network:</Text> {network?.name || "Unknown"}
                 </Menu.Item>
                 <Menu.Item key="balance">
                   <Text strong>Balance:</Text> {balance !== null ? `${balance} APT` : "Loading..."}
                 </Menu.Item>
                 <Menu.Divider />
-                <Menu.Item key="logout" icon={<LogoutOutlined />} onClick={handleLogout}>
+                <Menu.Item
+                  key="logout"
+                  icon={<LogoutOutlined />}
+                  onClick={handleDisconnect}
+                >
                   Log Out
                 </Menu.Item>
               </Menu>
             }
-            trigger={['click']}
+            trigger={["click"]}
           >
             <Button type="primary">
               Connected <DownOutlined />
             </Button>
           </Dropdown>
         ) : (
-          <Button type="primary" onClick={handleLogin}>
+          <Button type="primary" onClick={handleConnect}>
             Connect Wallet
           </Button>
         )}
